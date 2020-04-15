@@ -55,8 +55,9 @@ async function run() {
       const commit = node['commits']['nodes'][0]['commit'];
       if (commit['status'] !== null && commit['status']['contexts'] != undefined) {
         for (const context of commit['status']['contexts']) {
+          console.log(context['targetUrl']);
           const values = context['targetUrl'].split('/')
-          targetUrls.push(drone_base + values.slice(-2) + '/' + values.slice(-1) + '/builds/' + values.slice(-1))
+          targetUrls.push(drone_base + values.slice(-3)[0] + '/' + values.slice(-2)[0] + '/builds/' + values.slice(-1)[0])
         }
       }
     }
