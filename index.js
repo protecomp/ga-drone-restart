@@ -18,17 +18,31 @@ async function github_query(github_token, query, variables) {
 // most @actions toolkit packages have async methods
 async function run() {
   try { 
-    const commit_sha = core.getInput('commit_sha');
-    const target_branch = core.getInput('target_branch');
     const github_token = core.getInput('github_token');
     const repository = core.getInput('repository');
-    console.log(`Merging ${commit_sha} to ${repository}/${target_branch}`);
-    console.log("");
+    const drone_url = core.getInput('drone_url');
+    const drone_token = core.getInput('drone_token');
+
+    const drone_base = drone_url + '/api/repos/'
 
     let query = `
-    query($owner:String!, $name:String!){
+    query($owner:String!, $name:String!) { 
       repository(owner: $owner, name: $name) {
-        id
+        pullRequests(states:OPEN, first:100) {
+          nodes {
+            commits(first:1) {
+              nodes {
+                commit {
+                  status {
+                    contexts {
+                      targetUrl
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }`;
     let variables = { owner: repository.split("/")[0], name: repository.split("/")[1] };
@@ -36,21 +50,30 @@ async function run() {
     let response = await github_query(github_token, query, variables);
     console.log(response);
 
-    const repositoryId = response['data']['repository']['id'];
-
-    query = `
-    mutation($repositoryId:ID!, $base:String!, $head:String!) {
-      mergeBranch(input:{repositoryId:$repositoryId, base:$base, head:$head}) {
-        mergeCommit {
-          url
+    let targetUrls = [];
+    for (const node of response['data']['repository']['pullRequests']['nodes']) {
+      const commit = node['commits']['nodes'][0]['commit'];
+      if (commit['status'] !== null && commit['status']['contexts'] != undefined) {
+        for (const context of commit['status']['contexts']) {
+          const values = context['targetUrl'].split('/')
+          targetUrls.push(drone_base + values.slice(-2) + '/' + values.slice(-1) + '/builds/' + values.slice(-1))
         }
       }
-    }`;
-    variables = { repositoryId, base: target_branch, head: commit_sha };
+    }
+    console.log(targetUrls);
 
-    response = await github_query(github_token, query, variables);
-    console.log(response);
-    console.log(`Done! Merge commit: ${response['data']['mergeBranch']['mergeCommit']['url']}`)
+    for (const targetUrl of targetUrls) {
+      fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `bearer ${drone_token}`,
+        }
+      }).then(function(response) {
+        console.log(response.json())
+      });
+    }
   } 
   catch (error) {
     core.setFailed(error.message);
