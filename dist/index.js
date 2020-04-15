@@ -135,7 +135,7 @@ async function run() {
           'Authorization': `bearer ${drone_token}`,
         }
       }).then(function(response) {
-        console.log(response.json())
+        console.log(response)
       });
     }
   } 
