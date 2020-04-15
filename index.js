@@ -30,7 +30,7 @@ async function run() {
       repository(owner: $owner, name: $name) {
         pullRequests(states:OPEN, first:100) {
           nodes {
-            commits(first:1) {
+            commits(last:1) {
               nodes {
                 commit {
                   status {
