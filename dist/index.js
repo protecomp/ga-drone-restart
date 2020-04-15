@@ -132,7 +132,7 @@ async function run() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `bearer ${drone_token}`,
+          'Authorization': `Bearer ${drone_token}`,
         }
       }).then(function(response) {
         console.log(response)
